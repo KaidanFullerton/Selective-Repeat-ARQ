@@ -1,0 +1,15 @@
+*.o
+*lines
+lab5_receiver.c
+lab5_sender.c
+Makefile
+
+# MAC, vim, emacs, NFS
+.DS_STORE
+.DS_STORE?
+*~
+*#
+.#*
+.nfs*
+.*.sw?
+
