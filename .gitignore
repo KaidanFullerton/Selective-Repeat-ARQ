@@ -1,7 +1,7 @@
 *.o
 *lines
-lab5_receiver.c
-lab5_sender.c
+receiver.c
+sender.c
 Makefile
 
 # MAC, vim, emacs, NFS
