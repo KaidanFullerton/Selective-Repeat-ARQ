@@ -21,12 +21,13 @@ int sending_mode;
 
 /* Window state. */
 int mode; //slow start (0) or congestion avoidance modes (1)
+/* Sender specific. */
 int send_base; //left most point of our send window
 int send_window_size; //size of window
 int sender_cur_pos; //current position in send_buf
 int send_window_remaining;
 struct packet send_buf[WINDOW_SIZE_CAP]; // buffer array to hold the packets we pull in from the sender
-
+/* Receiver specific. */
 int recv_base; //left most point of our receiver window
 int recv_window_size; //size of receiver window
 struct packet recv_buf[WINDOW_SIZE_CAP]; // buffer array to hold the packets for the receiver

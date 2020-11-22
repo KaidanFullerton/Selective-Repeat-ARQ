@@ -24,6 +24,12 @@ struct packet{
  int FIN; //if a FIN or not: can help us to skip it in window if other packets are available to send
 };
 
+struct receiver_packet{
+ char array[MAX_PACKET]; //hold the header +  packet.
+ int array_len;
+ uint32_t acknowledgement_number;
+};
+
 int my_socket(int domain, int type, int protocol);
 int my_connect(int socket,struct sockaddr_in *toaddr,int addrsize);
 void my_send(int sock, void *buf, size_t len);
