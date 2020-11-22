@@ -262,9 +262,8 @@ int my_close(int sock) {
         while(start_of_cwnd < cur_pos){ // take in all unacknowledged packets still in our window
             receive_ACK(sock);    
         }
-        //Send a FIN message to let the receiver transition into close state
-        //Receive the ACK from the receiver for this FIN message
-        //Need to receive receiver's FIN message and send an ACK with a timeout
+        my_send(sock, NULL, 0); // Sends a FIN message to let the receiver transition into close state
+        receive_ACK(sock); // Receive the ACK from the receiver for this FIN message
     }
 
     //Receiver
