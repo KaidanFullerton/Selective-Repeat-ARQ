@@ -172,7 +172,7 @@ void my_send(int sock, void *buf, size_t len)
 {
     sender_or_receiver = 1;
     if(len == 0){
-        int closing = 1;
+        closing = 1;
     }
 
     if (cur_pos >= start_of_cwnd + window_size) { //window is full
@@ -262,14 +262,33 @@ int my_close(int sock) {
         while(start_of_cwnd < cur_pos){ // take in all unacknowledged packets still in our window
             receive_ACK(sock);    
         }
-        my_send(sock, NULL, 0); // Sends a FIN message to let the receiver transition into close state
-        receive_ACK(sock); // Receive the ACK from the receiver for this FIN message
+        my_send(sock, NULL, 0); // sends a FIN message to let the receiver transition into close state
+        receive_ACK(sock); // receive the ACK from the receiver for this FIN message
     }
 
     //Receiver
     else{
-        //Need to receive the sender's FIN message
-        //Need to send a FIN message of our own
+        while(1){
+            struct timeval timer;
+            fd_set rfds;
+            FD_ZERO(&rfds);
+            FD_SET(sock, &rfds);
+            msec_to_timeval(2000, &timer); // extended timeout to ensure sender doesn't get stuck
+
+            /* Manually create final packet to send. */
+            char ack_packet[MAX_PACKET];
+            memset(ack_packet, 0, sizeof(ack_packet));
+            struct packet_hdr *ack_hdr = (struct packet_hdr *) ack_packet;
+            ack_hdr->ack_number = htonl(++ack_number);
+
+            send(sock, ack_packet, sizeof(struct packet_hdr), 0);
+
+            int select_ret = select(sock+1, &rfds, NULL, NULL, &timer);
+
+            if(select_ret){ // if we get the final ACK from the sender, close; else resend via loop
+                break;
+            }
+        }
     }
     return close(sock);
 }
