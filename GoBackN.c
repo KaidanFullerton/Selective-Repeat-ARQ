@@ -30,7 +30,7 @@ struct packet send_buf[WINDOW_SIZE_CAP]; // buffer array to hold the packets we 
 /* Receiver specific. */
 int recv_base; //left most point of our receiver window
 int recv_window_size; //size of receiver window
-struct packet recv_buf[WINDOW_SIZE_CAP]; // buffer array to hold the packets for the receiver
+struct receiver_packet recv_buf[WINDOW_SIZE_CAP]; // buffer array to hold the packets for the receiver
 
 
 /* The following three helper functions make dealing with time values a bit easier. */
@@ -233,10 +233,10 @@ int my_recv(int sock, void *buf, size_t length) {
             perror("connect (my_recv)");
         }
 
-        fprintf(stderr, "Got packet %d, my ack = %d\n", ntohl(hdr->sequence_number),ack_number);
         int seq_num = ntohl(hdr->sequence_number);
         int close_flag = ntohl(hdr->close);
 
+        fprintf(stderr, "Got packet %d, my ack = %d\n", seq_num, seq_num);
 
         char ack_packet[MAX_PACKET];
         memset(ack_packet, 0, sizeof(ack_packet));
@@ -244,11 +244,13 @@ int my_recv(int sock, void *buf, size_t length) {
         ack_hdr->close = htonl(close_flag);
 
         int can_return = 0;
-        if (seq_num == recv_base) {
+        if (seq_num == recv_base) { // can return to application layer
             can_return = 1;
         }
-        ack_hdr->ack_number = htonl(seq_num);
+        if (seq_num > recv_base){ // must buffer this packet
 
+        }
+        ack_hdr->ack_number = htonl(seq_num);
         send(sock,ack_hdr,sizeof(struct packet_hdr),0);
 
         if(close_flag == 1){
@@ -256,10 +258,19 @@ int my_recv(int sock, void *buf, size_t length) {
         }
 
         if (can_return) {
+            for(int i = recv_base; i < recv_base + recv_window_size; i++){
+                if(recv_buf[recv_base].exists == 1){
+                    /* Copy the payload into the user-supplied buffer. */
+                    memcpy(buf, packet + sizeof(struct packet_hdr),
+                    recv_count - sizeof(struct packet_hdr));
+                    return recv_count - sizeof(struct packet_hdr);
+                }
+            }
+
             /* Copy the payload into the user-supplied buffer. */
-            memcpy(buf, packet + sizeof(struct packet_hdr),
-                recv_count - sizeof(struct packet_hdr));
-            return recv_count - sizeof(struct packet_hdr);
+//            memcpy(buf, packet + sizeof(struct packet_hdr),
+//                recv_count - sizeof(struct packet_hdr));
+//            return recv_count - sizeof(struct packet_hdr);
         }
     }
 }
