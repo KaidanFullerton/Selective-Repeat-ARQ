@@ -249,8 +249,10 @@ int my_recv(int sock, void *buf, size_t length) {
         }
         if (seq_num > recv_base || seq_num == recv_base){ // must buffer this packet
             /* Put this packet into our buffer*/
-            
-            //recv_buf[seq_num].array
+
+            memset(recv_buf[seq_num].array,0,sizeof(recv_buf[seq_num].array));
+            struct packet_hdr *hdr = (struct packet_hdr *) recv_buf[seq_num].array;
+            memcpy(hdr+1,buf,recv_count);
 
             recv_buf[seq_num].array_len = sizeof(struct packet_hdr) + recv_count;
             recv_buf[seq_num].exists = 1;
