@@ -220,6 +220,15 @@ int my_recv(int sock, void *buf, size_t length) {
     memset(packet, 0, sizeof(packet));
 
     while (1) {
+
+        if(recv_buf[recv_base].exists == 1){
+            
+            memcpy(buf, recv_buf[recv_base].array + sizeof(struct packet_hdr),
+                    recv_buf[recv_base].array_len - sizeof(struct packet_hdr));
+            recv_base++;
+            return recv_buf[recv_base].array_len - sizeof(struct packet_hdr);
+        }
+
         struct packet_hdr *hdr = (struct packet_hdr *) packet;
 
         struct sockaddr_in fromaddr;
@@ -234,51 +243,31 @@ int my_recv(int sock, void *buf, size_t length) {
         }
 
         int seq_num = ntohl(hdr->sequence_number);
-        int close_flag = ntohl(hdr->close);
+        //int close_flag = ntohl(hdr->close);
 
         fprintf(stderr, "Got packet %d, my ack = %d\n", seq_num, seq_num);
 
         char ack_packet[MAX_PACKET];
         memset(ack_packet, 0, sizeof(ack_packet));
         struct packet_hdr *ack_hdr = (struct packet_hdr *) ack_packet;
-        ack_hdr->close = htonl(close_flag);
+        //ack_hdr->close = htonl(close_flag);
 
-        int can_return = 0;
-        if (seq_num == recv_base) { // can return to application layer
-            can_return = 1;
-        }
         if (seq_num > recv_base || seq_num == recv_base){ // must buffer this packet
+
             /* Put this packet into our buffer*/
-
             memset(recv_buf[seq_num].array,0,sizeof(recv_buf[seq_num].array));
-            struct packet_hdr *hdr = (struct packet_hdr *) recv_buf[seq_num].array;
-            memcpy(hdr+1,buf,recv_count);
+            //struct packet_hdr *hdr = (struct packet_hdr *) recv_buf[seq_num].array;
+            memcpy(recv_buf[seq_num].array,packet,recv_count);
 
-            recv_buf[seq_num].array_len = sizeof(struct packet_hdr) + recv_count;
+            recv_buf[seq_num].array_len = recv_count;
             recv_buf[seq_num].exists = 1;
         }
         ack_hdr->ack_number = htonl(seq_num);
         send(sock,ack_hdr,sizeof(struct packet_hdr),0);
 
-        if(close_flag == 1){
-            return 1;
-        }
-
-        if (can_return) {
-            for(int i = recv_base; i < recv_base + recv_window_size; i++){
-                if(recv_buf[recv_base].exists == 1){
-                    /* Copy the payload into the user-supplied buffer. */
-                    memcpy(buf, packet + sizeof(struct packet_hdr),
-                    recv_count - sizeof(struct packet_hdr));
-                    return recv_count - sizeof(struct packet_hdr);
-                }
-            }
-
-            /* Copy the payload into the user-supplied buffer. */
-//            memcpy(buf, packet + sizeof(struct packet_hdr),
-//                recv_count - sizeof(struct packet_hdr));
-//            return recv_count - sizeof(struct packet_hdr);
-        }
+        //if(close_flag == 1){
+        //    return 1;
+        //}
     }
 }
 
