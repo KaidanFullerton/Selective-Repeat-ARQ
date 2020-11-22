@@ -1,8 +1,7 @@
 *.o
 *lines
-receiver.c
-sender.c
-Makefile
+receiver
+sender
 
 # MAC, vim, emacs, NFS
 .DS_STORE
