@@ -117,7 +117,7 @@ void receive_ACK(int socket){
         mode = 1;
         receive_ACK(socket);
     }
-    else {
+    else { //has not timed out
         fprintf(stderr, "hasn't timed out\n");
         char recv_buffer[MAX_PACKET];
         struct sockaddr_in fromaddr;
@@ -128,6 +128,7 @@ void receive_ACK(int socket){
         fprintf(stderr, "successful receive\n");
         struct packet_hdr *hdr = (struct packet_hdr *) recv_buffer;
         int ack_num = ntohl(hdr->ack_number);
+        send_buf[ack_num].ACK = 1;
 
         // update RTT if not retransmitted
         int has_been_retransmitted = 0;
@@ -141,12 +142,13 @@ void receive_ACK(int socket){
             estimate_RTT(sample);
         }
 
-        if (ack_num <= send_base) {
+        if (ack_num < send_base) { //ignore packet
             receive_ACK(socket);
         }
         else {
-            int advance = ack_num - send_base;
-            AIMD(advance);
+            send_buf[ack_num].ACK = 1;
+            //int advance = ack_num - send_base;
+            AIMD();
         }
     }
 }
@@ -163,9 +165,14 @@ struct packet * lowest_timeout() {
     }
     return &send_buf[min_index];
 }
-void AIMD(int advance){
-    send_window_remaining -= advance;
-    send_base += advance;
+void AIMD(){
+    //send_window_remaining -= advance;
+    //send_base += advance;
+    while(send_buf[send_base].ACK == 1){
+        send_base++;
+        send_window_remaining--;
+    }
+    
     if (send_window_remaining <= 0) {
         if (mode == 0) { //slow start
             send_window_size *= 2;
@@ -222,7 +229,6 @@ int my_recv(int sock, void *buf, size_t length) {
     while (1) {
 
         if(recv_buf[recv_base].exists == 1){
-            
             memcpy(buf, recv_buf[recv_base].array + sizeof(struct packet_hdr),
                     recv_buf[recv_base].array_len - sizeof(struct packet_hdr));
             recv_base++;

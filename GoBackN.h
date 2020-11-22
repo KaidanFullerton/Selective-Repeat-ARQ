@@ -47,4 +47,4 @@ void estimate_RTT(int SampleRTT);
 //GoBackN specific helper functions
 void receive_ACK(); //helper function to handle receving of ACKs for sent packets
 struct packet * lowest_timeout(); //determines the packet with the lowest timeout value in our sending window
-void AIMD(int advance); //manages our cwnd according to Additive Increase Multiplicative Decrease specifications
+void AIMD(); //manages our cwnd according to Additive Increase Multiplicative Decrease specifications
