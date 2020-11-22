@@ -28,6 +28,7 @@ struct receiver_packet{
  char array[MAX_PACKET]; //hold the header +  packet.
  int array_len;
  uint32_t acknowledgement_number;
+ int exists;
 };
 
 int my_socket(int domain, int type, int protocol);

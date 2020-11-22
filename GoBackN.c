@@ -10,7 +10,7 @@
 #include "GoBackN.h"
 
 /* Connection state. */
-int sequence_number;
+int sequence_num;
 int ack_number;
 float estimated_RTT;
 float Dev_RTT;
@@ -52,7 +52,7 @@ int current_msec() {
 
 int my_socket(int domain, int type, int protocol) {
     /* Initialize connection state. */
-    sequence_number = 0;
+    sequence_num = 0;
     ack_number = 0;
     estimated_RTT = 0;
     Dev_RTT = 0;
@@ -61,10 +61,15 @@ int my_socket(int domain, int type, int protocol) {
     
     /* Initialize window state. */
     mode = 0; //start in slow start mode
+    /* Sender specific. */
     send_window_size = 4; //start with cwnd of size 4
     send_base = 0; //starting the window at index 0 of our send_buf
     sender_cur_pos = 0; //start at index 0
     send_window_remaining = send_window_size;
+
+    /* Receiver specific. */
+    recv_base = 0;
+    recv_window_size = 12;
 
     return socket(domain, type, protocol);
 }
@@ -188,13 +193,13 @@ void my_send(int sock, void *buf, size_t len)
     memcpy(hdr+1,buf,len);
     send_buf[sender_cur_pos].array_len = sizeof(struct packet_hdr) + len;
     send_buf[sender_cur_pos].timeout = my_rtt(sock);
-    send_buf[sender_cur_pos].sequence_number = sequence_number;
+    send_buf[sender_cur_pos].sequence_number = sequence_num;
     send_buf[sender_cur_pos].packet_status = 0;
     send_buf[sender_cur_pos].projected_timeout = current_msec() + send_buf[sender_cur_pos].timeout;
     send_buf[sender_cur_pos].ACK = 0;
     send_buf[sender_cur_pos].FIN = 0;
     
-    hdr->sequence_number = htonl(sequence_number);
+    hdr->sequence_number = htonl(sequence_num);
     hdr->close = htonl(0);
 
     if(closing){
@@ -204,7 +209,7 @@ void my_send(int sock, void *buf, size_t len)
     
     send(sock, send_buf[sender_cur_pos].array, sizeof(struct packet_hdr) + len, 0);
     fprintf(stderr, "Sending seq num %d: ", ntohl(hdr->sequence_number));
-    sequence_number++;
+    sequence_num++;
     sender_cur_pos++;
 }
 
@@ -239,13 +244,12 @@ int my_recv(int sock, void *buf, size_t length) {
         ack_hdr->close = htonl(close_flag);
 
         int can_return = 0;
-        if (seq_num == ack_number) {
-            ack_number++;
+        if (seq_num == recv_base) {
             can_return = 1;
         }
-        ack_hdr->ack_number = htonl(ack_number);
+        ack_hdr->ack_number = htonl(seq_num);
 
-        send(sock,ack_packet,sizeof(struct packet_hdr),0);
+        send(sock,ack_hdr,sizeof(struct packet_hdr),0);
 
         if(close_flag == 1){
             return 1;
