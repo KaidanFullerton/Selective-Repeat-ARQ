@@ -6,7 +6,7 @@ all: $(TARGETS)
 sender: sender.c GoBackN.c
 	gcc $(CFLAGS) -o sender sender.c GoBackN.c -lpthread
 
-receiver: lab5_receiver.c lab5.c
+receiver: receiver.c GoBackN.c
 	gcc $(CFLAGS) -o receiver receiver.c GoBackN.c -lpthread
 
 clean:

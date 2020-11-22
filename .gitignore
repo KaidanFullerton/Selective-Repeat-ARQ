@@ -2,6 +2,8 @@
 *lines
 receiver
 sender
+output.txt
+output.err
 
 # MAC, vim, emacs, NFS
 .DS_STORE
