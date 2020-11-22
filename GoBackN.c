@@ -25,7 +25,7 @@ int start_of_cwnd; //left most point of our cwnd
 int window_size; //size of cwnd
 int cur_pos; //current position in sock_buf
 int window_left;
-struct packet sock_buf[WINDOW_SIZE_CAP]; //socket buffer to hold the packets we pull in from the sender
+struct packet send_buf[WINDOW_SIZE_CAP]; //socket buffer to hold the packets we pull in from the sender
 
 
 /* The following three helper functions make dealing with time values a bit easier. */
