@@ -107,10 +107,12 @@ void receive_ACK(int socket){
     if (!select_ret) { //timed out need to retransmit packets
         for (i = send_base; i < sender_cur_pos /*send_base + send_window_size*/; i++) {
             int idx = i % WINDOW_SIZE_CAP;
-            send(socket, send_buf[idx].array, send_buf[idx].array_len, 0);
-            send_buf[idx].timeout *= 2;
-            send_buf[idx].projected_timeout = current_msec() + send_buf[idx].timeout;
-            send_buf[idx].packet_status = 1;
+            if(send_buf[idx].ACK == 0){
+                send(socket, send_buf[idx].array, send_buf[idx].array_len, 0);
+                send_buf[idx].timeout *= 2;
+                send_buf[idx].projected_timeout = current_msec() + send_buf[idx].timeout;
+                send_buf[idx].packet_status = 1;
+            }
         }
         send_window_size /= 2; if (send_window_size < 1) send_window_size = 1;
         send_window_remaining = send_window_size;
@@ -208,11 +210,6 @@ void my_send(int sock, void *buf, size_t len)
     
     hdr->sequence_number = htonl(sequence_num);
     hdr->close = htonl(0);
-
-    if(closing){
-        send_buf[sender_cur_pos].FIN = 1;
-        hdr->close = htonl(1);
-    }
     
     send(sock, send_buf[sender_cur_pos].array, sizeof(struct packet_hdr) + len, 0);
     fprintf(stderr, "Sending seq num %d: ", ntohl(hdr->sequence_number));
@@ -229,10 +226,11 @@ int my_recv(int sock, void *buf, size_t length) {
     while (1) {
 
         if(recv_buf[recv_base].exists == 1){
+            int bytesize = recv_buf[recv_base].array_len - sizeof(struct packet_hdr);
             memcpy(buf, recv_buf[recv_base].array + sizeof(struct packet_hdr),
-                    recv_buf[recv_base].array_len - sizeof(struct packet_hdr));
+                    bytesize);
             recv_base++;
-            return recv_buf[recv_base].array_len - sizeof(struct packet_hdr);
+            return bytesize;
         }
 
         struct packet_hdr *hdr = (struct packet_hdr *) packet;
@@ -270,10 +268,6 @@ int my_recv(int sock, void *buf, size_t length) {
         }
         ack_hdr->ack_number = htonl(seq_num);
         send(sock,ack_hdr,sizeof(struct packet_hdr),0);
-
-        //if(close_flag == 1){
-        //    return 1;
-        //}
     }
 }
 
