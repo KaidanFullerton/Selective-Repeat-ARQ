@@ -226,9 +226,8 @@ int my_recv(int sock, void *buf, size_t length) {
     while (1) {
 
         if(recv_buf[recv_base].exists == 1){
-            int bytesize = recv_buf[recv_base].array_len - sizeof(struct packet_hdr);
-            memcpy(buf, recv_buf[recv_base].array + sizeof(struct packet_hdr),
-                    bytesize);
+            int bytesize = recv_buf[recv_base].array_len;
+            memcpy(buf, recv_buf[recv_base].array, bytesize);
             recv_base++;
             return bytesize;
         }
@@ -261,9 +260,9 @@ int my_recv(int sock, void *buf, size_t length) {
             /* Put this packet into our buffer*/
             memset(recv_buf[seq_num].array,0,sizeof(recv_buf[seq_num].array));
             //struct packet_hdr *hdr = (struct packet_hdr *) recv_buf[seq_num].array;
-            memcpy(recv_buf[seq_num].array,packet,recv_count);
+            memcpy(recv_buf[seq_num].array,packet + sizeof(struct packet_hdr),recv_count - sizeof(struct packet_hdr));
 
-            recv_buf[seq_num].array_len = recv_count;
+            recv_buf[seq_num].array_len = recv_count - sizeof(struct packet_hdr);
             recv_buf[seq_num].exists = 1;
         }
         ack_hdr->ack_number = htonl(seq_num);
