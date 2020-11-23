@@ -283,6 +283,7 @@ int my_close(int sock) {
 
     //Receiver
     else{
+        usleep(20); // take small pause to ensure sender can propperly transition to awaiting final ACK
         while(1){
             struct timeval timer;
             fd_set rfds;
@@ -303,6 +304,7 @@ int my_close(int sock) {
             if(select_ret){ // if we get the final ACK from the sender, close; else resend via loop
                 break;
             }
+            
         }
     }
     return close(sock);
