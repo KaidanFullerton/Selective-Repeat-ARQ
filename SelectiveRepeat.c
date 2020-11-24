@@ -7,7 +7,7 @@
 #include <sys/socket.h>
 #include <sys/select.h>
 #include <netinet/in.h>
-#include "GoBackN.h"
+#include "SelectiveRepeat.h"
 
 /* Connection state. */
 int sequence_num;

@@ -8,7 +8,7 @@
 #include <sys/select.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
-#include "GoBackN.h"
+#include "SelectiveRepeat.h"
 
 int main(int argc, char **argv) {
     if(argc != 2) {
