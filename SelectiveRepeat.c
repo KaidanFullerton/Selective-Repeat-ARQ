@@ -211,7 +211,7 @@ void my_send(int sock, void *buf, size_t len)
     send_buf[sender_cur_pos].FIN = 0;
     
     hdr->sequence_number = htonl(sequence_num);
-    hdr->close = htonl(0);
+    hdr->FIN = htonl(0);
     
     send(sock, send_buf[sender_cur_pos].array, sizeof(struct packet_hdr) + len, 0);
     fprintf(stderr, "Sending seq num %d: ", ntohl(hdr->sequence_number));

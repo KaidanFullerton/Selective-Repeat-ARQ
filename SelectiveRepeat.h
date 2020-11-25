@@ -6,29 +6,31 @@
 
 #define WINDOW_SIZE_CAP 2000
 
+/* stores header specific packet data */
 struct packet_hdr {
     uint32_t sequence_number;
     uint32_t ack_number;
-    uint32_t close;
+    uint32_t FIN;           /* indicates if packet is a FIN message */
 };
 
+/* stores sender specific packet data */
 struct packet{
- char array[MAX_PACKET]; //hold the header +  packet.
- int array_len;
- int timeout; //future timeout per packet
+ char array[MAX_PACKET];    /* store packet header + packet data */
+ int array_len;             /* byte length of packet header + packet data */
+ int timeout;               /* timeout time for this given packet */
  uint32_t sequence_number;
- int packet_status; //retransmitted or not
-
- int projected_timeout; //time the packet was sent, computed by current_msec() 
- int ACK; //if an ACK or not
- int FIN; //if a FIN or not: can help us to skip it in window if other packets are available to send
+ int packet_status;         /* indicates if packet has been retransmitted */
+ int projected_timeout;     /* time in milliseconds, that the packet is expected to timeout */
+ int ACK;                   /* indicates if packet has been acknowledged */
+ int FIN;                   /* indicates if packet is a FIN message */
 };
 
+/* stores recevier specific packet data */
 struct receiver_packet{
- char array[MAX_PACKET]; //hold the header +  packet.
- int array_len;
+ char array[MAX_PACKET];    /* store just the packet data */
+ int array_len;             /* byte length of packet data */
  uint32_t acknowledgement_number;
- int exists;
+ int exists;                /* indicates if the packet slot in the receiver buffer is filled or not */
 };
 
 int my_socket(int domain, int type, int protocol);
