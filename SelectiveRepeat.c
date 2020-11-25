@@ -20,17 +20,19 @@ int sender_or_receiver;
 int sending_mode;
 
 /* Window state. */
-int mode; //slow start (0) or congestion avoidance modes (1)
+int mode;                   /* slow start (0) or congestion avoidance mode (1) */
+
 /* Sender specific. */
-int send_base; //left most point of our send window
-int send_window_size; //size of window
-int sender_cur_pos; //current position in send_buf
-int send_window_remaining;
-struct packet send_buf[WINDOW_SIZE_CAP]; // buffer array to hold the packets we pull in from the sender
+int send_base;              /* index where send window starts */
+int send_window_size;
+int sender_cur_pos;         /* index of next open slot in sender buffer */
+int send_window_remaining;  /* number of packets needed to successfully transmit before AIMD */
+struct packet send_buf[WINDOW_SIZE_CAP];
+
 /* Receiver specific. */
-int recv_base; //left most point of our receiver window
-int recv_window_size; //size of receiver window
-struct receiver_packet recv_buf[WINDOW_SIZE_CAP]; // buffer array to hold the packets for the receiver
+int recv_base;              /* index where send window starts */
+int recv_window_size;
+struct receiver_packet recv_buf[WINDOW_SIZE_CAP];
 
 
 /* The following three helper functions make dealing with time values a bit easier. */
