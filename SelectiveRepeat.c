@@ -263,7 +263,7 @@ int my_recv(int sock, void *buf, size_t length) {
         memset(ack_packet, 0, sizeof(ack_packet));
         struct packet_hdr *ack_hdr = (struct packet_hdr *) ack_packet;
 
-        if (seq_num > recv_base || seq_num == recv_base){ /* packet is within our receive window */
+        if (seq_num >= recv_base){ /* packet is within our receive window */
 
             /* Put this packet into our buffer*/
             memset(recv_buf[seq_num].array,0,sizeof(recv_buf[seq_num].array));
