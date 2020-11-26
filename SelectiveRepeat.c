@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
+#include <limits.h>
 #include <sys/types.h>
 #include <sys/uio.h>
 #include <sys/socket.h>
@@ -164,7 +165,7 @@ void receive_ACK(int socket){
 
 struct packet * lowest_timeout() {
     int i;
-    int min_time = 999999999;
+    int min_time = INT_MAX;
     int min_index = send_base % WINDOW_SIZE_CAP;
     for (i = send_base; i < sender_cur_pos; i++) {
         int idx = i % WINDOW_SIZE_CAP;
