@@ -63,11 +63,12 @@ int my_socket(int domain, int type, int protocol) {
     sending_mode = 0;
     
     /* Initialize window state. */
-    mode = 0; //start in slow start mode
+    mode = 0; /* start in slow start mode */
+
     /* Sender specific. */
-    send_window_size = 4; //start with cwnd of size 4
-    send_base = 0; //starting the window at index 0 of our send_buf
-    sender_cur_pos = 0; //start at index 0
+    send_window_size = 4;
+    send_base = 0;
+    sender_cur_pos = 0;
     send_window_remaining = send_window_size;
 
     /* Receiver specific. */
@@ -107,22 +108,26 @@ void receive_ACK(int socket){
 
     fprintf(stderr, "rtt = %d\n",rtt);
     int select_ret = select(socket+1,&rfds,NULL,NULL,&timer);
-    if (!select_ret) { //timed out need to retransmit packets
-        for (i = send_base; i < sender_cur_pos /*send_base + send_window_size*/; i++) {
+    if (!select_ret) { /* timed out and need to retransmit packets */
+        for (i = send_base; i < sender_cur_pos; i++) {
             int idx = i % WINDOW_SIZE_CAP;
-            if(send_buf[idx].ACK == 0){
+            if(send_buf[idx].ACK == 0){ /* resend all unacknowledged packets in our send window*/
                 send(socket, send_buf[idx].array, send_buf[idx].array_len, 0);
                 send_buf[idx].timeout *= 2;
                 send_buf[idx].projected_timeout = current_msec() + send_buf[idx].timeout;
                 send_buf[idx].packet_status = 1;
             }
         }
-        send_window_size /= 2; if (send_window_size < 1) send_window_size = 1;
-        send_window_remaining = send_window_size;
-        mode = 1;
+	/* need to half window size when we encounter a congestion event */
+        send_window_size /= 2;
+	if (send_window_size < 1){
+		send_window_size = 1;
+	}
+	send_window_remaining = send_window_size;
+        mode = 1; /* switch to congestion advoidance mode after first congestion event */
         receive_ACK(socket);
     }
-    else { //has not timed out
+    else { /* has not timed out */
         fprintf(stderr, "hasn't timed out\n");
         char recv_buffer[MAX_PACKET];
         struct sockaddr_in fromaddr;
@@ -135,7 +140,7 @@ void receive_ACK(int socket){
         int ack_num = ntohl(hdr->ack_number);
         send_buf[ack_num].ACK = 1;
 
-        // update RTT if not retransmitted
+        /* update RTT if all packets were not retransmitted */
         int has_been_retransmitted = 0;
         for (i = send_base; i < ack_num; i++) {
             int idx = i % WINDOW_SIZE_CAP;
@@ -147,16 +152,16 @@ void receive_ACK(int socket){
             estimate_RTT(sample);
         }
 
-        if (ack_num < send_base) { //ignore packet
+        if (ack_num < send_base) { /* ignore packet if outside congestion window */
             receive_ACK(socket);
         }
         else {
             send_buf[ack_num].ACK = 1;
-            //int advance = ack_num - send_base;
             AIMD();
         }
     }
 }
+
 struct packet * lowest_timeout() {
     int i;
     int min_time = 999999999;
@@ -170,20 +175,19 @@ struct packet * lowest_timeout() {
     }
     return &send_buf[min_index];
 }
+
 void AIMD(){
-    //send_window_remaining -= advance;
-    //send_base += advance;
-    while(send_buf[send_base].ACK == 1){
+    while(send_buf[send_base].ACK == 1){ /* shift congestion window forward until we reach unacknowledged packet */
         send_base++;
         send_window_remaining--;
     }
     
-    if (send_window_remaining <= 0) {
-        if (mode == 0) { //slow start
+    if (send_window_remaining <= 0) { /* adjust window according to congestion control mode */
+        if (mode == 0) { /* slow start */
             send_window_size *= 2;
             send_window_remaining = send_window_size;
         }
-        else { //congestion avoidance
+        else { /* congestion avoidance */
             send_window_size++;
             send_window_remaining = send_window_size;
         }
@@ -192,14 +196,16 @@ void AIMD(){
 
 void my_send(int sock, void *buf, size_t len)
 {
-    sender_or_receiver = 1;
-    if(len == 0){
+    sender_or_receiver = 1; /* Set this API caller as sender for closing purposes */
+    if(len == 0){ /* empty packet signifies end of message */
         closing = 1;
     }
 
-    if (sender_cur_pos >= send_base + send_window_size) { //window is full
+    if (sender_cur_pos >= send_base + send_window_size) { /* window is full send packets before proceeding */
         receive_ACK(sock);
     }
+
+    /* create packet struct to store state before sending packet */
     memset(send_buf[sender_cur_pos].array,0,sizeof(send_buf[sender_cur_pos].array));
     struct packet_hdr *hdr = (struct packet_hdr *) send_buf[sender_cur_pos].array;
     memcpy(hdr+1,buf,len);
@@ -210,7 +216,8 @@ void my_send(int sock, void *buf, size_t len)
     send_buf[sender_cur_pos].projected_timeout = current_msec() + send_buf[sender_cur_pos].timeout;
     send_buf[sender_cur_pos].ACK = 0;
     send_buf[sender_cur_pos].FIN = 0;
-    
+   
+    /* fill out packet header before sending packet */
     hdr->sequence_number = htonl(sequence_num);
     hdr->FIN = htonl(0);
     
@@ -222,13 +229,13 @@ void my_send(int sock, void *buf, size_t len)
 
 int my_recv(int sock, void *buf, size_t length) {
     sender_or_receiver = 0;
-    /* Buffer for the packet. */
+    /* Buffer for the incoming packet */
     char packet[MAX_PACKET];
     memset(packet, 0, sizeof(packet));
 
     while (1) {
 
-        if(recv_buf[recv_base].exists == 1){
+        if(recv_buf[recv_base].exists == 1){ /* read in packet data until we reach empty buffer slot */
             int bytesize = recv_buf[recv_base].array_len;
             memcpy(buf, recv_buf[recv_base].array, bytesize);
             recv_base++;
@@ -248,26 +255,25 @@ int my_recv(int sock, void *buf, size_t length) {
             perror("connect (my_recv)");
         }
 
-        int seq_num = ntohl(hdr->sequence_number);
-        //int close_flag = ntohl(hdr->close);
+        int seq_num = ntohl(hdr->sequence_number); /* store sequence number corresponding to received packet */
 
         fprintf(stderr, "Got packet %d, my ack = %d\n", seq_num, seq_num);
 
         char ack_packet[MAX_PACKET];
         memset(ack_packet, 0, sizeof(ack_packet));
         struct packet_hdr *ack_hdr = (struct packet_hdr *) ack_packet;
-        //ack_hdr->close = htonl(close_flag);
 
-        if (seq_num > recv_base || seq_num == recv_base){ // must buffer this packet
+        if (seq_num > recv_base || seq_num == recv_base){ /* packet is within our receive window */
 
             /* Put this packet into our buffer*/
             memset(recv_buf[seq_num].array,0,sizeof(recv_buf[seq_num].array));
-            //struct packet_hdr *hdr = (struct packet_hdr *) recv_buf[seq_num].array;
             memcpy(recv_buf[seq_num].array,packet + sizeof(struct packet_hdr),recv_count - sizeof(struct packet_hdr));
 
             recv_buf[seq_num].array_len = recv_count - sizeof(struct packet_hdr);
             recv_buf[seq_num].exists = 1;
         }
+
+	/* send a selective ACK with the acknowledge number corresponding to received packet */
         ack_hdr->ack_number = htonl(seq_num);
         send(sock,ack_hdr,sizeof(struct packet_hdr),0);
     }
@@ -275,24 +281,24 @@ int my_recv(int sock, void *buf, size_t length) {
 
 int my_close(int sock) {
 
-    //Sender
+    /* sender specific behavior */
     if(sender_or_receiver == 1){
-        while(send_base < sender_cur_pos){ // take in all unacknowledged packets still in our window
+        while(send_base < sender_cur_pos){ /* ensure all packets in congestion window are sent before closing */
             receive_ACK(sock);    
         }
-        my_send(sock, NULL, 0); // sends a FIN message to let the receiver transition into close state
-        receive_ACK(sock); // receive the ACK from the receiver for this FIN message
+        my_send(sock, NULL, 0); /* sends a FIN message to let the receiver transition into close state */
+        receive_ACK(sock); /* receive the ACK from the receiver for this FIN message */
     }
 
-    //Receiver
+    /* receiver specific behavior */
     else{
-        usleep(20); // take small pause to ensure sender can propperly transition to awaiting final ACK
+        usleep(20); /* take small pause to ensure sender can propperly transition to awaiting final ACK */
         while(1){
             struct timeval timer;
             fd_set rfds;
             FD_ZERO(&rfds);
             FD_SET(sock, &rfds);
-            msec_to_timeval(2000, &timer); // extended timeout to ensure sender doesn't get stuck
+            msec_to_timeval(2000, &timer); /* extended timeout to ensure sender doesn't get stuck */
 
             /* Manually create final packet to send. */
             char ack_packet[MAX_PACKET];
@@ -304,7 +310,7 @@ int my_close(int sock) {
 
             int select_ret = select(sock+1, &rfds, NULL, NULL, &timer);
 
-            if(select_ret){ // if we get the final ACK from the sender, close; else resend via loop
+            if(select_ret){ /* if we get the final ACK from the sender, close; otherwise resend via loop */
                 break;
             }
             
